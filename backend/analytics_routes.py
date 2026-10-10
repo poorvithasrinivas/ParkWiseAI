@@ -1,10 +1,14 @@
 
 from datetime import datetime, timezone
 
+import pandas as pd
 from flask import Blueprint, current_app, jsonify, request
 
 from backend.db import get_connection
-
+from backend.ml_forecasting.forecast import (
+    SUPPORTED_HORIZONS,
+    predict_occupancy,
+)
 
 analytics_bp = Blueprint("analytics", __name__)
 
@@ -170,45 +174,177 @@ def occupancy_analytics():
 
 @analytics_bp.get("/api/analytics/forecast")
 def occupancy_forecast():
+    """Forecast occupancy using the trained 30- and 60-minute models."""
     try:
+        requested_horizon = request.args.get("forecast_minutes")
+
+        if requested_horizon is not None:
+            try:
+                requested_horizon = int(requested_horizon)
+            except ValueError:
+                return jsonify({
+                    "error": {
+                        "code": "INVALID_FORECAST_HORIZON",
+                        "message": (
+                            "forecast_minutes must be 30 or 60."
+                        ),
+                    }
+                }), 400
+
+            if requested_horizon not in SUPPORTED_HORIZONS:
+                return jsonify({
+                    "error": {
+                        "code": "INVALID_FORECAST_HORIZON",
+                        "message": (
+                            "forecast_minutes must be 30 or 60."
+                        ),
+                    }
+                }), 400
+
+            horizons = (requested_horizon,)
+        else:
+            horizons = SUPPORTED_HORIZONS
+
+        # The model requires five observations from consecutive
+        # 15-minute intervals. Event-triggered snapshots alone do
+        # not guarantee that requirement.
         with get_connection() as connection:
             observations = connection.execute("""
                 SELECT timestamp, occupied_count, total_capacity
                 FROM occupancy_history
                 WHERE data_source = 'VEHICLE_ENTRY_EXIT'
                 ORDER BY timestamp DESC
-                LIMIT 500
+                LIMIT 5
             """).fetchall()
 
-        if len(observations) < 24:
+        required = 5
+
+        if len(observations) < required:
             return jsonify({
                 "status": "insufficient_data",
                 "message": (
-                    "At least 24 vehicle-entry/exit occupancy observations "
-                    "are required before forecasting can be evaluated."
+                    "Five occupancy observations are required. "
+                    "The available observations must be consecutive "
+                    "15-minute measurements."
                 ),
                 "observations_available": len(observations),
-                "observations_required": 24,
+                "observations_required": required,
                 "predictions": [],
             }), 200
 
+        # Convert newest-first database results to oldest-first.
+        observations = list(reversed(observations))
+
+        try:
+            timestamps = [
+                pd.Timestamp(row["timestamp"])
+                for row in observations
+            ]
+        except (TypeError, ValueError):
+            return jsonify({
+                "status": "insufficient_data",
+                "message": "An occupancy observation has an invalid timestamp.",
+                "observations_available": len(observations),
+                "observations_required": required,
+                "predictions": [],
+            }), 200
+
+        if any(pd.isna(timestamp) for timestamp in timestamps):
+            return jsonify({
+                "status": "insufficient_data",
+                "message": "An occupancy observation has an invalid timestamp.",
+                "observations_available": len(observations),
+                "observations_required": required,
+                "predictions": [],
+            }), 200
+
+        # Permit at most 60 seconds of scheduling/recording drift
+        # around each 15-minute interval.
+        for previous, latest in zip(timestamps, timestamps[1:]):
+            elapsed_seconds = (latest - previous).total_seconds()
+
+            if abs(elapsed_seconds - 900) > 60:
+                return jsonify({
+                    "status": "insufficient_data",
+                    "message": (
+                        "The latest observations are not consecutive "
+                        "15-minute measurements. Collect regularly "
+                        "spaced occupancy snapshots before forecasting."
+                    ),
+                    "observations_available": len(observations),
+                    "observations_required": required,
+                    "predictions": [],
+                }), 200
+
+        capacities = {
+            row["total_capacity"] for row in observations
+        }
+
+        if len(capacities) != 1:
+            return jsonify({
+                "status": "insufficient_data",
+                "message": (
+                    "Parking capacity changed during the observation "
+                    "window. Collect a consistent observation window "
+                    "before forecasting."
+                ),
+                "observations_available": len(observations),
+                "observations_required": required,
+                "predictions": [],
+            }), 200
+
+        capacity = next(iter(capacities))
+
+        if capacity is None or capacity <= 0:
+            return jsonify({
+                "status": "insufficient_data",
+                "message": "A positive parking capacity is required.",
+                "observations_available": len(observations),
+                "observations_required": required,
+                "predictions": [],
+            }), 200
+
+        recent_occupancies = [
+            row["occupied_count"] for row in observations
+        ]
+
+        predictions = []
+
+        for horizon in horizons:
+            result = predict_occupancy(
+                recent_occupancies=recent_occupancies,
+                total_capacity=int(capacity),
+                forecast_minutes=horizon,
+                observation_timestamp=timestamps[-1].isoformat(),
+                data_source="VEHICLE_ENTRY_EXIT",
+            )
+            predictions.append(result)
+
         return jsonify({
-            "status": "model_not_connected",
-            "message": (
-                "Occupancy observations are available, but the trained "
-                "ML forecasting model has not been connected yet."
-            ),
+            "status": "success",
             "observations_available": len(observations),
-            "predictions": [],
+            "observations_required": required,
+            "predictions": predictions,
         }), 200
 
-    except Exception:
+    except FileNotFoundError:
         current_app.logger.exception(
-            "Failed to retrieve occupancy forecast data"
+            "Occupancy forecasting model file is missing"
         )
         return jsonify({
             "error": {
-                "code": "INTERNAL_ERROR",
-                "message": "Unable to retrieve occupancy forecast data.",
+                "code": "MODEL_NOT_FOUND",
+                "message": "The trained occupancy forecasting model is unavailable.",
+            }
+        }), 503
+
+    except Exception:
+        current_app.logger.exception(
+            "Failed to generate occupancy forecast"
+        )
+        return jsonify({
+            "error": {
+                "code": "FORECAST_FAILED",
+                "message": "Unable to generate occupancy forecasts.",
             }
         }), 500

@@ -95,7 +95,7 @@ def test_forecast_reports_insufficient_data_initially(client):
 
     assert result["status"] == "insufficient_data"
     assert result["observations_available"] == 0
-    assert result["observations_required"] == 24
+    assert result["observations_required"] == 5
     assert result["predictions"] == []
 
 
