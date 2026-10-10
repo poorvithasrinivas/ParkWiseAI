@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0b1220">
+
+    <title>ParkWise AI | Smart Parking</title>
+
+    <link
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+        rel="stylesheet"
+    >
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+<div class="app-shell">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+        <a class="brand" href="#dashboard">
+            <span class="brand-icon">P</span>
+            <span>ParkWise<span class="brand-accent"> AI</span></span>
+        </a>
+
+        <p class="nav-label">WORKSPACE</p>
+
+        <nav class="side-nav">
+            <a class="nav-item active" href="#dashboard" data-page="dashboard">
+                <span>▦</span> Dashboard
+            </a>
+
+            <a class="nav-item" href="#parking" data-page="parking">
+                <span>▤</span> Parking spaces
+            </a>
+
+            <a class="nav-item" href="#forecast" data-page="forecast">
+                <span>⌁</span> AI Forecasts
+            </a>
+
+            <a class="nav-item" href="#reservations" data-page="reservations">
+                <span>▣</span> Reservations
+            </a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <span class="status-dot"></span>
+            <span>ParkWise system</span>
+            <span class="system-status">LOCAL</span>
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="main-content">
+
+        <!-- PAGE HEADER -->
+        <header class="topbar">
+            <div>
+                <p class="eyebrow">SMART CAMPUS MOBILITY</p>
+                <h1 id="pageTitle">Parking overview</h1>
+                <p class="subtitle" id="pageSubtitle">
+                    Monitor parking availability and AI-powered occupancy forecasts.
+                </p>
+            </div>
+
+            <div class="connection-status">
+                <span class="status-dot"></span>
+                <span id="connectionText">Connecting to backend...</span>
+            </div>
+        </header>
+
+        <!-- ========================================= -->
+        <!-- DASHBOARD PAGE                            -->
+        <!-- ========================================= -->
+        <section class="page-view" data-view="dashboard">
+
+            <section class="welcome-banner">
+                <div>
+                    <p class="banner-label">PARKWISE INTELLIGENCE</p>
+                    <h2>Every space. Smarter decisions.</h2>
+                    <p>
+                        Real-time parking insights with predictive occupancy analytics.
+                    </p>
+                </div>
+                <div class="banner-decoration" aria-hidden="true">P</div>
+            </section>
+
+            <section class="section-block">
+                <div class="section-heading">
+                    <div>
+                        <h2>Live parking statistics</h2>
+                        <p>Current occupancy from the parking backend</p>
+                    </div>
+
+                    <button class="btn btn-refresh" id="refreshButton" type="button">
+                        ↻ Refresh data
+                    </button>
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-12 col-sm-6 col-xl-3">
+                        <article class="stat-card">
+                            <div class="stat-top">
+                                <span>Total capacity</span>
+                                <span class="stat-icon blue">▦</span>
+                            </div>
+                            <div class="stat-value" id="totalCapacity">—</div>
+                            <p class="stat-caption">Active parking spaces</p>
+                        </article>
+                    </div>
+
+                    <div class="col-12 col-sm-6 col-xl-3">
+                        <article class="stat-card">
+                            <div class="stat-top">
+                                <span>Occupied spaces</span>
+                                <span class="stat-icon orange">▣</span>
+                            </div>
+                            <div class="stat-value" id="occupiedCount">—</div>
+                            <p class="stat-caption">Currently in use</p>
+                        </article>
+                    </div>
+
+                    <div class="col-12 col-sm-6 col-xl-3">
+                        <article class="stat-card">
+                            <div class="stat-top">
+                                <span>Available spaces</span>
+                                <span class="stat-icon green">✓</span>
+                            </div>
+                            <div class="stat-value" id="availableCount">—</div>
+                            <p class="stat-caption">Ready for parking</p>
+                        </article>
+                    </div>
+
+                    <div class="col-12 col-sm-6 col-xl-3">
+                        <article class="stat-card">
+                            <div class="stat-top">
+                                <span>Occupancy rate</span>
+                                <span class="stat-icon purple">%</span>
+                            </div>
+                            <div class="stat-value" id="occupancyRate">—</div>
+                            <p class="stat-caption">Of active capacity</p>
+                        </article>
+                    </div>
+                </div>
+
+                <div class="stat-card mt-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <strong>Parking utilization</strong>
+                        <span id="occupancyBarLabel">0%</span>
+                    </div>
+
+                    <div
+                        class="progress"
+                        role="progressbar"
+                        aria-label="Parking occupancy"
+                        aria-valuemin="0"
+                        aria-valuemax="100"
+                        aria-valuenow="0"
+                        id="occupancyProgress"
+                    >
+                        <div
+                            class="progress-bar"
+                            id="occupancyBar"
+                            style="width: 0%"
+                        ></div>
+                    </div>
+
+                    <p class="data-message mt-3" id="liveMessage" role="status">
+                        Waiting for parking data...
+                    </p>
+                </div>
+            </section>
+
+            <footer class="page-footer">
+                <span>ParkWise AI · Smart campus parking</span>
+                <span id="lastUpdated">Waiting for first update</span>
+            </footer>
+        </section>
+
+        <!-- ========================================= -->
+        <!-- PARKING SPACES PAGE                       -->
+        <!-- ========================================= -->
+        <section class="page-view" data-view="parking" hidden>
+            <section class="section-block">
+                <div class="section-heading">
+                    <div>
+                        <h2>Parking zones</h2>
+                        <p>Campus parking capacity by zone</p>
+                    </div>
+
+                    <button class="btn btn-refresh" type="button" data-refresh>
+                        ↻ Refresh data
+                    </button>
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-12 col-md-4">
+                        <article class="zone-card">
+                            <div class="zone-letter">A</div>
+                            <div class="zone-info">
+                                <h3>Zone A</h3>
+                                <p>General parking</p>
+                                <strong id="zoneA">— spaces</strong>
+                                <span id="zoneAAvailability">Availability loading</span>
+                            </div>
+                        </article>
+                    </div>
+
+                    <div class="col-12 col-md-4">
+                        <article class="zone-card">
+                            <div class="zone-letter">B</div>
+                            <div class="zone-info">
+                                <h3>Zone B</h3>
+                                <p>General parking</p>
+                                <strong id="zoneB">— spaces</strong>
+                                <span id="zoneBAvailability">Availability loading</span>
+                            </div>
+                        </article>
+                    </div>
+
+                    <div class="col-12 col-md-4">
+                        <article class="zone-card">
+                            <div class="zone-letter">C</div>
+                            <div class="zone-info">
+                                <h3>Zone C</h3>
+                                <p>EV and accessible spaces included</p>
+                                <strong id="zoneC">— spaces</strong>
+                                <span id="zoneCAvailability">Availability loading</span>
+                            </div>
+                        </article>
+                    </div>
+                </div>
+
+                <div class="stat-card mt-4">
+                    <div class="parking-slots-heading">
+                        <div>
+                            <h2>Find a parking space</h2>
+                            <p>Browse each space by zone, type, and live status.</p>
+                        </div>
+                        <span class="slots-total" id="slotsTotal">— spaces</span>
+                    </div>
+                    <p class="data-message" id="slotsMessage" role="status">
+                        Loading parking spaces...
+                    </p>
+                    <div class="slot-filters" aria-label="Filter parking spaces">
+                        <label>
+                            <span>Zone</span>
+                            <select class="form-select" id="slotZoneFilter">
+                                <option value="">All zones</option>
+                                <option value="A">Zone A</option>
+                                <option value="B">Zone B</option>
+                                <option value="C">Zone C</option>
+                            </select>
+                        </label>
+                        <label>
+                            <span>Space type</span>
+                            <select class="form-select" id="slotTypeFilter">
+                                <option value="">All types</option>
+                                <option value="REGULAR">Regular</option>
+                                <option value="EV">EV charging</option>
+                                <option value="ACCESSIBLE">Accessible</option>
+                            </select>
+                        </label>
+                        <label>
+                            <span>Status</span>
+                            <select class="form-select" id="slotStatusFilter">
+                                <option value="">All spaces</option>
+                                <option value="AVAILABLE">Available</option>
+                                <option value="OCCUPIED">Occupied</option>
+                            </select>
+                        </label>
+                    </div>
+                    <div id="slotsContainer"></div>
+                </div>
+            </section>
+        </section>
+
+        <!-- ========================================= -->
+        <!-- AI FORECASTS PAGE                         -->
+        <!-- ========================================= -->
+        <section class="page-view" data-view="forecast" hidden>
+            <section class="section-block">
+                <div class="section-heading">
+                    <div>
+                        <h2>AI occupancy forecasts</h2>
+                        <p>Predicted parking occupancy from the trained ML models</p>
+                    </div>
+
+                    <button class="btn btn-refresh" type="button" data-refresh>
+                        ↻ Refresh data
+                    </button>
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-12 col-lg-6">
+                        <article class="forecast-card">
+                            <div class="forecast-top">
+                                <div>
+                                    <p class="forecast-horizon">NEXT 30 MINUTES</p>
+                                    <h3>Short-term forecast</h3>
+                                </div>
+                                <span class="forecast-icon">⌁</span>
+                            </div>
+
+                            <div class="forecast-result">
+                                <span class="forecast-number" id="forecast30">—</span>
+                                <span class="forecast-unit">occupied spaces</span>
+                            </div>
+
+                            <p class="forecast-detail" id="forecast30Detail">
+                                Waiting for sufficient observations.
+                            </p>
+                        </article>
+                    </div>
+
+                    <div class="col-12 col-lg-6">
+                        <article class="forecast-card">
+                            <div class="forecast-top">
+                                <div>
+                                    <p class="forecast-horizon">NEXT 60 MINUTES</p>
+                                    <h3>Hourly forecast</h3>
+                                </div>
+                                <span class="forecast-icon">◷</span>
+                            </div>
+
+                            <div class="forecast-result">
+                                <span class="forecast-number" id="forecast60">—</span>
+                                <span class="forecast-unit">occupied spaces</span>
+                            </div>
+
+                            <p class="forecast-detail" id="forecast60Detail">
+                                Waiting for sufficient observations.
+                            </p>
+                        </article>
+                    </div>
+                </div>
+
+                <p class="data-message mt-3" id="forecastMessage" role="status">
+                    Checking forecast availability...
+                </p>
+            </section>
+        </section>
+
+        <!-- ========================================= -->
+        <!-- RESERVATIONS PAGE                         -->
+        <!-- ========================================= -->
+        <section class="page-view" data-view="reservations" hidden>
+            <section class="section-block">
+
+                <div class="section-heading">
+                    <div>
+                        <h2>Reserve a parking space</h2>
+                        <p>
+                            Enter your vehicle details and choose your preferred
+                            parking requirements.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <form id="reservationForm">
+
+                        <div class="mb-4">
+                            <h3>Vehicle information</h3>
+                            <p class="text-muted">
+                                Provide the registration number of the vehicle
+                                you plan to park.
+                            </p>
+                        </div>
+
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <label for="vehicleNo" class="form-label">
+                                    Vehicle registration number
+                                </label>
+
+                                <input
+                                    type="text"
+                                    class="form-control"
+                                    id="vehicleNo"
+                                    name="vehicle_no"
+                                    placeholder="e.g. KA01AB1234"
+                                    minlength="4"
+                                    maxlength="15"
+                                    title="Enter 4–15 letters, numbers, spaces or hyphens."
+                                    autocomplete="off"
+                                    required
+                                >
+                            </div>
+
+                            <div class="col-12 col-md-6">
+                                <label for="vehicleType" class="form-label">
+                                    Vehicle type
+                                </label>
+
+                                <select
+                                    class="form-select"
+                                    id="vehicleType"
+                                    name="vehicle_type"
+                                    required
+                                >
+                                    <option value="BIKE" selected>Bike</option>
+                                    <option value="MOTORCYCLE">Motorcycle</option>
+                                    <option value="CAR">Car</option>
+                                    <option value="EV">Electric vehicle</option>
+                                </select>
+                            </div>
+
+                            <div class="col-12 col-md-6">
+                                <label for="slotType" class="form-label">
+                                    Parking slot type
+                                </label>
+
+                                <select
+                                    class="form-select"
+                                    id="slotType"
+                                    name="slot_type"
+                                    required
+                                >
+                                    <option value="REGULAR" selected>
+                                        Regular parking
+                                    </option>
+                                    <option value="EV">
+                                        EV charging parking
+                                    </option>
+                                    <option value="ACCESSIBLE">
+                                        Accessible parking
+                                    </option>
+                                </select>
+                            </div>
+
+                            <div class="col-12">
+                                <label for="preferredZone" class="form-label">
+                                    Preferred parking zone
+                                </label>
+
+                                <select
+                                    class="form-select"
+                                    id="preferredZone"
+                                    name="zone"
+                                >
+                                    <option value="" selected>Any available zone</option>
+                                    <option value="A">Zone A</option>
+                                    <option value="B">Zone B</option>
+                                    <option value="C">Zone C</option>
+                                </select>
+
+                                <div class="form-text" id="zoneAvailabilityHint" role="status">
+                                    Choose a zone with spaces matching your selected parking type.
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr class="my-4">
+
+                        <div class="mb-3">
+                            <h3>Reservation schedule</h3>
+                            <p class="text-muted">
+                                Select when you want to enter and leave the
+                                parking facility.
+                            </p>
+                        </div>
+
+                        <div class="row g-3">
+                            <div class="col-12 col-md-6">
+                                <label for="startTime" class="form-label">
+                                    Start date and time
+                                </label>
+
+                                <input
+                                    type="datetime-local"
+                                    class="form-control"
+                                    id="startTime"
+                                    name="start_time"
+                                    required
+                                >
+                            </div>
+
+                            <div class="col-12 col-md-6">
+                                <label for="endTime" class="form-label">
+                                    End date and time
+                                </label>
+
+                                <input
+                                    type="datetime-local"
+                                    class="form-control"
+                                    id="endTime"
+                                    name="end_time"
+                                    required
+                                >
+                            </div>
+                        </div>
+
+                        <div class="alert alert-light border mt-4" role="note">
+                            <strong>Before you reserve</strong>
+                            <p class="mb-0 mt-1">
+                                Your booking will be confirmed only if a suitable
+                                slot is available for the entire selected period.
+                            </p>
+                        </div>
+
+                        <div class="d-flex flex-wrap gap-2 mt-4">
+                            <button
+                                type="submit"
+                                class="btn btn-primary"
+                                id="reserveButton"
+                            >
+                                Confirm reservation
+                            </button>
+
+                            <button
+                                type="reset"
+                                class="btn btn-outline-secondary"
+                                id="resetReservationButton"
+                            >
+                                Clear form
+                            </button>
+                        </div>
+
+                        <div
+                            class="mt-4"
+                            id="reservationMessage"
+                            role="status"
+                            aria-live="polite"
+                        ></div>
+
+                        <div class="mt-3" id="reservationResult" aria-live="polite"></div>
+                    </form>
+                </div>
+            </section>
+        </section>
+    </main>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
