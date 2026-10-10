@@ -185,9 +185,7 @@ def occupancy_forecast():
                 return jsonify({
                     "error": {
                         "code": "INVALID_FORECAST_HORIZON",
-                        "message": (
-                            "forecast_minutes must be 30 or 60."
-                        ),
+                        "message": "forecast_minutes must be 30 or 60.",
                     }
                 }), 400
 
@@ -195,9 +193,7 @@ def occupancy_forecast():
                 return jsonify({
                     "error": {
                         "code": "INVALID_FORECAST_HORIZON",
-                        "message": (
-                            "forecast_minutes must be 30 or 60."
-                        ),
+                        "message": "forecast_minutes must be 30 or 60.",
                     }
                 }), 400
 
@@ -205,15 +201,13 @@ def occupancy_forecast():
         else:
             horizons = SUPPORTED_HORIZONS
 
-        # The model requires five observations from consecutive
-        # 15-minute intervals. Event-triggered snapshots alone do
-        # not guarantee that requirement.
+        # Only scheduled snapshots are used for forecasting.
         with get_connection() as connection:
             observations = connection.execute("""
                 SELECT timestamp, occupied_count, total_capacity
                 FROM occupancy_history
-                WHERE data_source = 'VEHICLE_ENTRY_EXIT'
-                ORDER BY timestamp DESC
+                WHERE data_source = 'SCHEDULED_SNAPSHOT'
+                ORDER BY timestamp DESC, id DESC
                 LIMIT 5
             """).fetchall()
 
@@ -223,9 +217,8 @@ def occupancy_forecast():
             return jsonify({
                 "status": "insufficient_data",
                 "message": (
-                    "Five occupancy observations are required. "
-                    "The available observations must be consecutive "
-                    "15-minute measurements."
+                    "Five scheduled occupancy observations are required, "
+                    "spaced approximately 15 minutes apart."
                 ),
                 "observations_available": len(observations),
                 "observations_required": required,
@@ -258,8 +251,7 @@ def occupancy_forecast():
                 "predictions": [],
             }), 200
 
-        # Permit at most 60 seconds of scheduling/recording drift
-        # around each 15-minute interval.
+        # Ensure timestamps are consecutive 15-minute observations.
         for previous, latest in zip(timestamps, timestamps[1:]):
             elapsed_seconds = (latest - previous).total_seconds()
 
@@ -268,8 +260,8 @@ def occupancy_forecast():
                     "status": "insufficient_data",
                     "message": (
                         "The latest observations are not consecutive "
-                        "15-minute measurements. Collect regularly "
-                        "spaced occupancy snapshots before forecasting."
+                        "15-minute measurements. Keep the collector "
+                        "running and try again after enough snapshots."
                     ),
                     "observations_available": len(observations),
                     "observations_required": required,
@@ -285,8 +277,7 @@ def occupancy_forecast():
                 "status": "insufficient_data",
                 "message": (
                     "Parking capacity changed during the observation "
-                    "window. Collect a consistent observation window "
-                    "before forecasting."
+                    "window. A consistent observation window is required."
                 ),
                 "observations_available": len(observations),
                 "observations_required": required,
@@ -311,14 +302,15 @@ def occupancy_forecast():
         predictions = []
 
         for horizon in horizons:
-            result = predict_occupancy(
-                recent_occupancies=recent_occupancies,
-                total_capacity=int(capacity),
-                forecast_minutes=horizon,
-                observation_timestamp=timestamps[-1].isoformat(),
-                data_source="VEHICLE_ENTRY_EXIT",
+            predictions.append(
+                predict_occupancy(
+                    recent_occupancies=recent_occupancies,
+                    total_capacity=int(capacity),
+                    forecast_minutes=horizon,
+                    observation_timestamp=timestamps[-1].isoformat(),
+                    data_source="SCHEDULED_SNAPSHOT",
+                )
             )
-            predictions.append(result)
 
         return jsonify({
             "status": "success",
@@ -334,7 +326,9 @@ def occupancy_forecast():
         return jsonify({
             "error": {
                 "code": "MODEL_NOT_FOUND",
-                "message": "The trained occupancy forecasting model is unavailable.",
+                "message": (
+                    "The trained occupancy forecasting model is unavailable."
+                ),
             }
         }), 503
 
