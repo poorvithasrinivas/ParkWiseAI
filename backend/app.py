@@ -13,6 +13,9 @@ app = Flask(__name__)
 CORS(app)
 initialize_database()
 
+from backend.analytics_routes import analytics_bp
+app.register_blueprint(analytics_bp)
+
 VALID_SLOT_TYPES = {"REGULAR", "EV", "ACCESSIBLE"}
 VALID_VEHICLE_TYPES = {"CAR", "BIKE", "MOTORCYCLE", "EV"}
 
