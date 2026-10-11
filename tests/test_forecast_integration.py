@@ -85,6 +85,55 @@ def test_real_ml_models_work_through_forecast_api(forecast_client):
         assert prediction["observation_timestamp"]
 
 
+def test_forecast_uses_recent_activity_when_scheduled_window_is_irregular(
+    forecast_client,
+):
+    now = datetime.now(timezone.utc).replace(second=0, microsecond=0)
+    with database.get_connection() as connection:
+        connection.execute("""
+            UPDATE occupancy_history
+            SET timestamp = '2020-01-01T00:00:00Z'
+            WHERE data_source = 'SCHEDULED_SNAPSHOT'
+        """)
+        for index, occupied in enumerate([2, 4, 3, 6, 5]):
+            timestamp = now - timedelta(minutes=4 * (4 - index))
+            connection.execute(
+                """
+                INSERT INTO occupancy_history (
+                    timestamp,
+                    occupied_count,
+                    total_capacity,
+                    data_source
+                )
+                VALUES (?, ?, ?, ?)
+                """,
+                (
+                    timestamp.isoformat().replace("+00:00", "Z"),
+                    occupied,
+                    100,
+                    "VEHICLE_ENTRY_EXIT",
+                ),
+            )
+
+    result = forecast_client.get("/api/analytics/forecast").get_json()
+
+    assert result["status"] == "success"
+    assert len(result["predictions"]) == 2
+    assert all(
+        prediction["data_source"] == "LIVE_ACTIVITY_SNAPSHOTS"
+        for prediction in result["predictions"]
+    )
+
+
+def test_model_status_reports_both_packaged_models(forecast_client):
+    response = forecast_client.get("/api/analytics/model-status")
+
+    assert response.status_code == 200
+    models = response.get_json()["models"]
+    assert [model["forecast_minutes"] for model in models] == [30, 60]
+    assert all(model["available"] for model in models)
+
+
 @pytest.mark.parametrize(
     ("horizon", "expected_count"),
     [(30, 1), (60, 1)],

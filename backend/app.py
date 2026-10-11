@@ -15,6 +15,8 @@ initialize_database()
 
 from backend.analytics_routes import analytics_bp
 app.register_blueprint(analytics_bp)
+from backend.copilot_routes import copilot_bp
+app.register_blueprint(copilot_bp)
 
 VALID_SLOT_TYPES = {"REGULAR", "EV", "ACCESSIBLE"}
 VALID_VEHICLE_TYPES = {"CAR", "BIKE", "MOTORCYCLE", "EV"}
@@ -61,15 +63,19 @@ def get_slots():
         with get_connection() as connection:
             rows = connection.execute("""
                 SELECT s.slot_id, s.zone, s.slot_type, s.is_active,
-                    EXISTS (
-                        SELECT 1
-                        FROM parking_sessions ps
-                        JOIN reservations r
-                          ON r.reservation_id = ps.reservation_id
-                        WHERE r.slot_id = s.slot_id
-                          AND ps.actual_exit_time IS NULL
-                    ) AS occupied
+                       active.vehicle_type,
+                       active.registration_no AS vehicle_no,
+                       active.slot_id IS NOT NULL AS occupied
                 FROM parking_slots s
+                LEFT JOIN (
+                    SELECT r.slot_id, v.vehicle_type, v.registration_no
+                    FROM parking_sessions ps
+                    JOIN reservations r
+                      ON r.reservation_id = ps.reservation_id
+                    JOIN vehicles v
+                      ON v.vehicle_id = r.vehicle_id
+                    WHERE ps.actual_exit_time IS NULL
+                ) AS active ON active.slot_id = s.slot_id
                 ORDER BY s.zone, s.slot_id
             """).fetchall()
 
@@ -78,7 +84,9 @@ def get_slots():
             "zone": row["zone"],
             "slot_type": row["slot_type"],
             "is_active": bool(row["is_active"]),
-            "current_status": "OCCUPIED" if row["occupied"] else "AVAILABLE"
+            "current_status": "OCCUPIED" if row["occupied"] else "AVAILABLE",
+            "vehicle_type": row["vehicle_type"],
+            "vehicle_no": row["vehicle_no"],
         } for row in rows]
 
         return jsonify({"total_slots": len(slots), "slots": slots}), 200
@@ -179,6 +187,7 @@ def create_reservation():
     vehicle_type = body.get("vehicle_type")
     slot_type = body.get("slot_type", "REGULAR")
     zone = body.get("zone", "")
+    preferred_slot_id = body.get("preferred_slot_id", "")
 
     if not all(
         isinstance(v, str) and v.strip()
@@ -202,8 +211,13 @@ def create_reservation():
         return error_response("INVALID_SLOT_TYPE", "Unsupported slot type.", 400)
     if not isinstance(zone, str):
         return error_response("INVALID_ZONE", "zone must be a string.", 400)
+    if not isinstance(preferred_slot_id, str):
+        return error_response(
+            "INVALID_SLOT", "preferred_slot_id must be a string.", 400
+        )
 
     zone = zone.strip().upper()
+    preferred_slot_id = preferred_slot_id.strip().upper()
 
     try:
         start = parse_timestamp(body.get("start_time"))
@@ -264,6 +278,7 @@ def create_reservation():
                 WHERE s.is_active = 1
                   AND s.slot_type = ?
                   AND (? = '' OR s.zone = ?)
+                  AND (? = '' OR s.slot_id = ?)
                   AND NOT EXISTS (
                       SELECT 1 FROM reservations r
                       WHERE r.slot_id = s.slot_id
@@ -280,10 +295,20 @@ def create_reservation():
                   )
                 ORDER BY s.zone, s.slot_id
                 LIMIT 1
-            """, (slot_type, zone, zone, end_text, start_text)).fetchone()
+            """, (
+                slot_type, zone, zone,
+                preferred_slot_id, preferred_slot_id,
+                end_text, start_text
+            )).fetchone()
 
             if not selected:
                 connection.rollback()
+                if preferred_slot_id:
+                    return error_response(
+                        "RECOMMENDED_SLOT_UNAVAILABLE",
+                        "That suggested space is no longer available. Refresh recommendations and try another space.",
+                        409
+                    )
                 return error_response(
                     "NO_AVAILABLE_SLOT",
                     "No suitable parking slot is available for that time.",
@@ -319,6 +344,56 @@ def create_reservation():
         app.logger.exception("Reservation creation failed")
         return error_response(
             "INTERNAL_ERROR", "Unable to create reservation.", 500
+        )
+
+
+@app.get("/api/reservations")
+def list_active_reservations():
+    status_filter = request.args.get("status", "ACTIVE").strip().upper()
+    status_values = {
+        "ACTIVE": ("CONFIRMED", "CHECKED_IN"),
+        "ALL": ("CONFIRMED", "CHECKED_IN", "COMPLETED", "CANCELLED", "EXPIRED", "NO_SHOW"),
+        "CONFIRMED": ("CONFIRMED",),
+        "CHECKED_IN": ("CHECKED_IN",),
+    }
+    statuses = status_values.get(status_filter)
+    if statuses is None:
+        return error_response(
+            "INVALID_STATUS_FILTER",
+            "status must be ACTIVE, ALL, CONFIRMED, or CHECKED_IN.",
+            400
+        )
+
+    placeholders = ", ".join("?" for _ in statuses)
+    try:
+        with get_connection() as connection:
+            rows = connection.execute(f"""
+                SELECT r.reservation_id, v.registration_no AS vehicle_no,
+                       v.vehicle_type, r.slot_id, s.zone, s.slot_type,
+                       r.start_time, r.end_time, r.status, r.created_at,
+                       ps.actual_entry_time AS entry_time,
+                       ps.actual_exit_time AS exit_time
+                FROM reservations AS r
+                JOIN vehicles AS v ON v.vehicle_id = r.vehicle_id
+                JOIN parking_slots AS s ON s.slot_id = r.slot_id
+                LEFT JOIN parking_sessions AS ps
+                  ON ps.reservation_id = r.reservation_id
+                WHERE r.status IN ({placeholders})
+                ORDER BY
+                    CASE r.status WHEN 'CHECKED_IN' THEN 0 ELSE 1 END,
+                    r.created_at DESC
+                LIMIT 100
+            """, statuses).fetchall()
+
+        reservations = [dict(row) for row in rows]
+        return jsonify({
+            "total_reservations": len(reservations),
+            "reservations": reservations
+        }), 200
+    except Exception:
+        app.logger.exception("Active reservations lookup failed")
+        return error_response(
+            "INTERNAL_ERROR", "Unable to retrieve active reservations.", 500
         )
 
 
@@ -519,4 +594,4 @@ def vehicle_exit():
 
 
 if __name__ == "__main__":
-    app.run(host="127.0.0.1", port=5000, debug=True)
+    app.run(host="127.0.0.1", port=5001, debug=True)

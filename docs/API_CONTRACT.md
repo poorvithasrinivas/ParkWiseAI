@@ -317,3 +317,74 @@ Refer to the actual endpoint implementation for the complete response schema and
 - The forecasting endpoint supports 30-minute and 60-minute horizons.
 - Keep the occupancy collector running to accumulate scheduled snapshots.
 - Do not expose internal errors or stack traces to frontend users.
+
+## 11. ParkWise Copilot
+
+**Endpoint:** `POST /api/chat`
+
+The Copilot uses deterministic intent handling and approved ParkWise endpoints.
+It does not require an external LLM or API credentials. It supports current
+availability, zone occupancy, EV/accessibility spaces, space recommendations,
+the existing 30/60-minute forecast, and reservation preparation with explicit
+confirmation.
+
+### Request body
+
+```json
+{
+  "message": "How many spaces are available right now?",
+  "chat_id": null,
+  "timezone_offset_minutes": 330
+}
+```
+
+- `message`: Required string, 1–500 characters.
+- `chat_id`: Optional opaque conversation ID returned by the previous response.
+- `timezone_offset_minutes`: Optional client-local UTC offset from -840 to 840.
+
+### Response body
+
+Successful responses have a stable shape:
+
+```json
+{
+  "chat_id": "opaque-token",
+  "reply": "Live answer from ParkWise data.",
+  "actions": [
+    {"type": "navigate", "page": "parking", "label": "View parking map"}
+  ],
+  "state": null,
+  "assistant_mode": "DETERMINISTIC"
+}
+```
+
+Actions are limited to navigation and highlighting a returned zone or slot.
+Reservation conversations use short-lived, server-side in-memory state and
+expire after 30 minutes. The Copilot rechecks availability and requires a
+separate confirmation before it calls the existing `POST /api/reservations`
+endpoint. A successful reservation reply is based on that endpoint's response.
+
+### Limitations and privacy
+
+- Forecast answers use the existing trained model and report insufficient data
+  rather than fabricating values.
+- EV availability reports EV-designated spaces; the database does not track
+  charger equipment or charger status.
+- Zone congestion answers compare current occupancy. The ML models do not
+  provide zone-level forecasts.
+- Reservation lookup and cancellation are not offered by the Copilot. This
+  installation has no authentication/ownership model or cancellation endpoint.
+- Administrator-only operations are unavailable because no authenticated
+  administrator role exists.
+- No external LLM credentials are used or required. The assistant labels itself
+  deterministic and does not claim to be generative AI.
+- Chat sessions and the per-IP rate limiter are held in process memory. Run a
+  single backend worker for reservation conversations; restarting the process
+  clears pending conversations.
+
+### Errors
+
+Invalid JSON, missing or oversized messages, invalid timezone offsets, expired
+chat tokens, and rate limits return a JSON `error` object and an appropriate
+HTTP status. Data-service errors are logged server-side and returned to users
+as concise messages.

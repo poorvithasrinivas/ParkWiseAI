@@ -35,6 +35,10 @@
                 <span>▤</span> Parking spaces
             </a>
 
+            <a class="nav-item" href="#vehicles" data-page="vehicles">
+                <span>↔</span> Vehicle entry / exit
+            </a>
+
             <a class="nav-item" href="#forecast" data-page="forecast">
                 <span>⌁</span> AI Forecasts
             </a>
@@ -64,9 +68,15 @@
                 </p>
             </div>
 
-            <div class="connection-status">
-                <span class="status-dot"></span>
-                <span id="connectionText">Connecting to backend...</span>
+            <div class="topbar-actions">
+                <div class="connection-status">
+                    <span class="status-dot"></span>
+                    <span id="connectionText">Connecting to backend...</span>
+                </div>
+                <span class="refresh-meta" id="lastUpdated">Waiting for first update</span>
+                <button class="btn btn-refresh" id="refreshButton" type="button" aria-label="Refresh live parking data">
+                    <span aria-hidden="true">↻</span> Refresh
+                </button>
             </div>
         </header>
 
@@ -74,33 +84,17 @@
         <!-- DASHBOARD PAGE                            -->
         <!-- ========================================= -->
         <section class="page-view" data-view="dashboard">
-
-            <section class="welcome-banner">
-                <div>
-                    <p class="banner-label">PARKWISE INTELLIGENCE</p>
-                    <h2>Every space. Smarter decisions.</h2>
-                    <p>
-                        Real-time parking insights with predictive occupancy analytics.
-                    </p>
-                </div>
-                <div class="banner-decoration" aria-hidden="true">P</div>
-            </section>
-
             <section class="section-block">
                 <div class="section-heading">
                     <div>
-                        <h2>Live parking statistics</h2>
-                        <p>Current occupancy from the parking backend</p>
+                        <h2>Facility at a glance</h2>
+                        <p>Live capacity and occupancy from the parking backend</p>
                     </div>
-
-                    <button class="btn btn-refresh" id="refreshButton" type="button">
-                        ↻ Refresh data
-                    </button>
                 </div>
 
                 <div class="row g-3">
                     <div class="col-12 col-sm-6 col-xl-3">
-                        <article class="stat-card">
+                        <article class="stat-card dashboard-metric metric-capacity">
                             <div class="stat-top">
                                 <span>Total capacity</span>
                                 <span class="stat-icon blue">▦</span>
@@ -111,7 +105,7 @@
                     </div>
 
                     <div class="col-12 col-sm-6 col-xl-3">
-                        <article class="stat-card">
+                        <article class="stat-card dashboard-metric metric-occupied">
                             <div class="stat-top">
                                 <span>Occupied spaces</span>
                                 <span class="stat-icon orange">▣</span>
@@ -122,7 +116,7 @@
                     </div>
 
                     <div class="col-12 col-sm-6 col-xl-3">
-                        <article class="stat-card">
+                        <article class="stat-card dashboard-metric metric-available">
                             <div class="stat-top">
                                 <span>Available spaces</span>
                                 <span class="stat-icon green">✓</span>
@@ -133,7 +127,7 @@
                     </div>
 
                     <div class="col-12 col-sm-6 col-xl-3">
-                        <article class="stat-card">
+                        <article class="stat-card dashboard-metric metric-rate">
                             <div class="stat-top">
                                 <span>Occupancy rate</span>
                                 <span class="stat-icon purple">%</span>
@@ -144,98 +138,101 @@
                     </div>
                 </div>
 
-                <div class="stat-card mt-3">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <strong>Parking utilization</strong>
-                        <span id="occupancyBarLabel">0%</span>
-                    </div>
+                <div class="dashboard-lower-grid">
+                    <article class="stat-card utilization-card">
+                        <div class="utilization-heading">
+                            <div>
+                                <span class="panel-kicker">CAPACITY BALANCE</span>
+                                <h3>Parking utilization</h3>
+                            </div>
+                            <strong id="occupancyBarLabel">0%</strong>
+                        </div>
 
-                    <div
-                        class="progress"
-                        role="progressbar"
-                        aria-label="Parking occupancy"
-                        aria-valuemin="0"
-                        aria-valuemax="100"
-                        aria-valuenow="0"
-                        id="occupancyProgress"
-                    >
                         <div
-                            class="progress-bar"
-                            id="occupancyBar"
-                            style="width: 0%"
-                        ></div>
-                    </div>
+                            class="progress"
+                            role="progressbar"
+                            aria-label="Parking occupancy"
+                            aria-valuemin="0"
+                            aria-valuemax="100"
+                            aria-valuenow="0"
+                            id="occupancyProgress"
+                        >
+                            <div
+                                class="progress-bar"
+                                id="occupancyBar"
+                                style="width: 0%"
+                            ></div>
+                        </div>
+                        <p class="data-message" id="liveMessage" role="status">
+                            Waiting for parking data...
+                        </p>
+                    </article>
 
-                    <p class="data-message mt-3" id="liveMessage" role="status">
-                        Waiting for parking data...
-                    </p>
+                    <article class="dashboard-featured" aria-live="polite">
+                        <div class="featured-topline">
+                            <span class="featured-mark" aria-hidden="true">✦</span>
+                            <span class="featured-label">PARKWISE INTELLIGENCE</span>
+                            <span class="featured-live"><i></i><span id="dashboardFeatureStatus">Live data</span></span>
+                        </div>
+                        <h2 id="dashboardFeatureTitle">Your facility, at a glance</h2>
+                        <p id="dashboardInsight">Waiting for live occupancy data.</p>
+                        <p class="featured-meta" id="dashboardFeatureMeta">Forecast insights appear when the trained model has sufficient observations.</p>
+                        <div class="dashboard-quick-actions" aria-label="Quick actions">
+                            <a href="#parking" data-page="parking">Explore spaces <span aria-hidden="true">→</span></a>
+                            <a href="#reservations" data-page="reservations">Make a reservation <span aria-hidden="true">→</span></a>
+                            <a href="#forecast" data-page="forecast">View forecasts <span aria-hidden="true">→</span></a>
+                        </div>
+                    </article>
                 </div>
             </section>
 
             <footer class="page-footer">
                 <span>ParkWise AI · Smart campus parking</span>
-                <span id="lastUpdated">Waiting for first update</span>
+                <span>Live operational data · Model forecasts are labeled separately</span>
             </footer>
         </section>
 
         <!-- ========================================= -->
-        <!-- PARKING SPACES PAGE                       -->
+        <!-- PARKING SPACES PAGE  (Live Map)          -->
         <!-- ========================================= -->
         <section class="page-view" data-view="parking" hidden>
             <section class="section-block">
-                <div class="section-heading">
-                    <div>
-                        <h2>Parking zones</h2>
-                        <p>Campus parking capacity by zone</p>
+
+                <!-- LIVE MAP -->
+                <div class="live-map-wrapper">
+                    <div class="live-map-toprow">
+                        <div>
+                            <p class="live-map-eyebrow">LIVE MAP</p>
+                            <h2 class="live-map-title">Find a parking space</h2>
+                            <p class="live-map-sub">Live space status from the parking database. Schematic layout, not to scale.</p>
+                        </div>
+                        <button class="btn btn-refresh" type="button" id="refreshMapBtn">Refresh map</button>
                     </div>
 
-                    <button class="btn btn-refresh" type="button" data-refresh>
-                        ↻ Refresh data
-                    </button>
+                    <div class="map-zone-selector" role="group" aria-label="Show parking zone">
+                        <button type="button" class="map-zone-button active" data-map-zone="" aria-pressed="true">All zones</button>
+                        <button type="button" class="map-zone-button" data-map-zone="A" aria-pressed="false">Zone A</button>
+                        <button type="button" class="map-zone-button" data-map-zone="B" aria-pressed="false">Zone B</button>
+                        <button type="button" class="map-zone-button" data-map-zone="C" aria-pressed="false">Zone C</button>
+                    </div>
+
+                    <div class="live-map-legend">
+                        <span class="legend-item"><span class="legend-dot dot-available"></span> Available now</span>
+                        <span class="legend-item"><span class="legend-dot dot-occupied"></span> Occupied now</span>
+                        <span class="legend-item"><span class="legend-dot dot-inactive"></span> Inactive</span>
+                    </div>
+
+                    <div class="live-map-zones" id="liveMapContainer">
+                        <p class="data-message">Loading live map...</p>
+                    </div>
+                    <aside class="selected-slot-details" id="selectedSlotDetails" aria-live="polite" hidden></aside>
                 </div>
 
-                <div class="row g-3">
-                    <div class="col-12 col-md-4">
-                        <article class="zone-card">
-                            <div class="zone-letter">A</div>
-                            <div class="zone-info">
-                                <h3>Zone A</h3>
-                                <p>General parking</p>
-                                <strong id="zoneA">— spaces</strong>
-                                <span id="zoneAAvailability">Availability loading</span>
-                            </div>
-                        </article>
-                    </div>
-
-                    <div class="col-12 col-md-4">
-                        <article class="zone-card">
-                            <div class="zone-letter">B</div>
-                            <div class="zone-info">
-                                <h3>Zone B</h3>
-                                <p>General parking</p>
-                                <strong id="zoneB">— spaces</strong>
-                                <span id="zoneBAvailability">Availability loading</span>
-                            </div>
-                        </article>
-                    </div>
-
-                    <div class="col-12 col-md-4">
-                        <article class="zone-card">
-                            <div class="zone-letter">C</div>
-                            <div class="zone-info">
-                                <h3>Zone C</h3>
-                                <p>EV and accessible spaces included</p>
-                                <strong id="zoneC">— spaces</strong>
-                                <span id="zoneCAvailability">Availability loading</span>
-                            </div>
-                        </article>
-                    </div>
-                </div>
-
+                <!-- Filterable list -->
                 <div class="stat-card mt-4">
                     <div class="parking-slots-heading">
                         <div>
-                            <h2>Find a parking space</h2>
+                            <h2>All parking spaces</h2>
                             <p>Browse each space by zone, type, and live status.</p>
                         </div>
                         <span class="slots-total" id="slotsTotal">— spaces</span>
@@ -258,7 +255,7 @@
                             <select class="form-select" id="slotTypeFilter">
                                 <option value="">All types</option>
                                 <option value="REGULAR">Regular</option>
-                                <option value="EV">EV charging</option>
+                                <option value="EV">EV</option>
                                 <option value="ACCESSIBLE">Accessible</option>
                             </select>
                         </label>
@@ -268,10 +265,75 @@
                                 <option value="">All spaces</option>
                                 <option value="AVAILABLE">Available</option>
                                 <option value="OCCUPIED">Occupied</option>
+                                <option value="INACTIVE">Inactive</option>
                             </select>
+                        </label>
+                        <label class="slot-search">
+                            <span>Find a space</span>
+                            <input class="form-control" id="slotSearch" type="search" placeholder="Search by slot ID" autocomplete="off">
                         </label>
                     </div>
                     <div id="slotsContainer"></div>
+                </div>
+            </section>
+        </section>
+
+        <!-- ========================================= -->
+        <!-- VEHICLE ENTRY / EXIT PAGE                -->
+        <!-- ========================================= -->
+        <section class="page-view" data-view="vehicles" hidden>
+            <section class="section-block">
+                <div class="section-heading">
+                    <div>
+                        <h2>Vehicle entry and exit</h2>
+                        <p>Check a reserved vehicle into its assigned space or record its departure.</p>
+                    </div>
+                    <button class="btn btn-refresh" type="button" id="refreshReservationsBtn">
+                        ↻ Refresh vehicles
+                    </button>
+                </div>
+
+                <div class="stat-card vehicle-form-panel mb-4">
+                    <h3>Record a vehicle movement</h3>
+                    <p class="text-muted">
+                        Enter the reservation ID to check a vehicle in or out. Check-in opens 15 minutes before the reservation starts.
+                    </p>
+                    <form id="vehicleMovementForm">
+                        <div class="row g-3 align-items-end">
+                            <div class="col-12 col-lg-6">
+                                <label for="movementReservationId" class="form-label">Reservation ID</label>
+                                <input
+                                    type="text"
+                                    class="form-control"
+                                    id="movementReservationId"
+                                    placeholder="e.g. PK-AB12CD34EF"
+                                    autocomplete="off"
+                                    required
+                                >
+                            </div>
+                            <div class="col-12 col-lg-6 d-flex flex-wrap gap-2">
+                                <button class="btn btn-primary" type="submit" data-movement="entry">
+                                    Record vehicle entry
+                                </button>
+                                <button class="btn btn-outline-primary" type="submit" data-movement="exit">
+                                    Record vehicle exit
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                    <p class="data-message mt-3 mb-0" id="movementMessage" role="status" aria-live="polite"></p>
+                </div>
+
+                <div class="stat-card">
+                    <div class="parking-slots-heading">
+                        <div>
+                            <h2>Active reservations</h2>
+                            <p>Check in confirmed reservations or check out vehicles currently parked.</p>
+                        </div>
+                        <span class="slots-total" id="activeReservationsTotal">Loading…</span>
+                    </div>
+                    <p class="data-message" id="activeReservationsMessage" role="status">Loading active reservations…</p>
+                    <div id="activeReservationsContainer"></div>
                 </div>
             </section>
         </section>
@@ -290,6 +352,23 @@
                     <button class="btn btn-refresh" type="button" data-refresh>
                         ↻ Refresh data
                     </button>
+                </div>
+
+                <div class="row g-3 mb-3">
+                    <div class="col-12 col-md-6">
+                        <article class="stat-card model-status-card">
+                            <p class="forecast-horizon">30-MINUTE MODEL</p>
+                            <h3>Random Forest Regressor</h3>
+                            <p class="mb-0" id="model30Status">Checking packaged model…</p>
+                        </article>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <article class="stat-card model-status-card">
+                            <p class="forecast-horizon">60-MINUTE MODEL</p>
+                            <h3>Random Forest Regressor</h3>
+                            <p class="mb-0" id="model60Status">Checking packaged model…</p>
+                        </article>
+                    </div>
                 </div>
 
                 <div class="row g-3">
@@ -336,6 +415,136 @@
                     </div>
                 </div>
 
+                <div class="ai-chart-grid mt-4">
+                    <article class="stat-card ai-visual-card">
+                        <div class="ai-panel-heading">
+                            <div>
+                                <p class="forecast-horizon">LIVE + MODEL SIGNALS</p>
+                                <h3>Occupancy trend</h3>
+                            </div>
+                            <span class="ai-panel-icon" aria-hidden="true">↗</span>
+                        </div>
+                        <p class="ai-panel-copy" id="occupancyChartSummary">
+                            Building a picture from real parking activity…
+                        </p>
+                        <div class="ai-chart-scroll">
+                            <svg id="occupancyTrendChart" class="ai-chart" viewBox="0 0 720 260" role="img" aria-label="Occupancy percentage over time"></svg>
+                        </div>
+                        <p class="chart-legend">
+                            <span><i class="legend-line actual"></i>Observed occupancy</span>
+                            <span><i class="legend-line predicted"></i>Model forecast</span>
+                        </p>
+                    </article>
+
+                    <article class="stat-card ai-visual-card">
+                        <div class="ai-panel-heading">
+                            <div>
+                                <p class="forecast-horizon">CAPACITY BALANCE</p>
+                                <h3>Zone utilization</h3>
+                            </div>
+                            <span class="ai-panel-icon" aria-hidden="true">▥</span>
+                        </div>
+                        <p class="ai-panel-copy">Compare spaces in use with capacity by zone.</p>
+                        <div class="ai-chart-scroll">
+                            <svg id="zoneUtilizationChart" class="ai-chart zone-chart" viewBox="0 0 520 260" role="img" aria-label="Occupied and available spaces by parking zone"></svg>
+                        </div>
+                        <p class="chart-legend">
+                            <span><i class="legend-swatch occupied"></i>Occupied</span>
+                            <span><i class="legend-swatch available"></i>Available</span>
+                        </p>
+                    </article>
+                </div>
+
+                <article class="stat-card ai-recommendation-panel mt-4">
+                    <div class="ai-panel-heading">
+                        <div>
+                            <p class="forecast-horizon">UTILIZATION-AWARE MATCHING</p>
+                            <h3>Smart slot recommendations</h3>
+                            <p class="ai-panel-copy">Ranked from real availability, booked demand, space type, and current zone utilization.</p>
+                        </div>
+                        <span class="ai-panel-icon" aria-hidden="true">✦</span>
+                    </div>
+                    <form id="recommendationForm" class="recommendation-controls">
+                        <label>
+                            <span>Vehicle</span>
+                            <select class="form-select" id="recommendVehicleType">
+                                <option value="CAR" selected>Car</option>
+                                <option value="EV">Electric vehicle</option>
+                                <option value="MOTORCYCLE">Motorcycle</option>
+                                <option value="BIKE">Bike</option>
+                            </select>
+                        </label>
+                        <label>
+                            <span>Space type</span>
+                            <select class="form-select" id="recommendSlotType">
+                                <option value="REGULAR" selected>Regular</option>
+                                <option value="EV">EV</option>
+                                <option value="ACCESSIBLE">Accessible</option>
+                            </select>
+                        </label>
+                        <label>
+                            <span>Arrival</span>
+                            <input class="form-control" id="recommendStartTime" type="datetime-local" required>
+                        </label>
+                        <label>
+                            <span>Departure</span>
+                            <input class="form-control" id="recommendEndTime" type="datetime-local" required>
+                        </label>
+                        <button class="btn btn-primary" id="recommendButton" type="submit">Find best spaces</button>
+                    </form>
+                    <p class="data-message" id="recommendationMessage" role="status" aria-live="polite">
+                        Choose a vehicle and time window to find available spaces.
+                    </p>
+                    <div id="recommendationResults" class="recommendation-results"></div>
+                </article>
+
+                <article class="stat-card overstay-panel mt-4">
+                    <div class="ai-panel-heading">
+                        <div>
+                            <p class="forecast-horizon">CAPACITY RECOVERY</p>
+                            <h3>Overstay & unused-reservation intelligence</h3>
+                            <p class="ai-panel-copy">Surface late departures and reservations with no recorded arrival so teams can follow up and recover capacity.</p>
+                        </div>
+                        <button class="btn btn-refresh" id="refreshIntelligenceBtn" type="button">↻ Refresh insights</button>
+                    </div>
+                    <div class="row g-3 mt-1">
+                        <div class="col-12 col-md-4">
+                            <div class="intel-metric">
+                                <span>Overstays</span>
+                                <strong id="intelOverstayCount">—</strong>
+                                <small>Checked-in past scheduled end</small>
+                            </div>
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <div class="intel-metric">
+                                <span>Arrival risks</span>
+                                <strong id="intelUnusedCount">—</strong>
+                                <small>Reservations with no recorded entry</small>
+                            </div>
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <div class="intel-metric">
+                                <span>Next estimated release</span>
+                                <strong class="intel-time-value" id="intelNextRelease">—</strong>
+                                <small id="intelNextReleaseDetail">Waiting for active-session data</small>
+                            </div>
+                        </div>
+                    </div>
+                    <p class="data-message" id="intelligenceMessage" role="status">
+                        Analyzing reservations and parking sessions…
+                    </p>
+                    <div class="intel-lists">
+                        <section>
+                            <h4>Needs attention</h4>
+                            <div id="intelligenceAlerts" class="intel-list"></div>
+                        </section>
+                        <section>
+                            <h4>Estimated space availability</h4>
+                            <div id="estimatedReleases" class="intel-list"></div>
+                        </section>
+                    </div>
+                </article>
+
                 <p class="data-message mt-3" id="forecastMessage" role="status">
                     Checking forecast availability...
                 </p>
@@ -358,8 +567,9 @@
                     </div>
                 </div>
 
-                <div class="stat-card">
+                <div class="stat-card reservation-form-panel">
                     <form id="reservationForm">
+                        <input type="hidden" id="preferredSlotId" name="preferred_slot_id">
 
                         <div class="mb-4">
                             <h3>Vehicle information</h3>
@@ -422,7 +632,7 @@
                                         Regular parking
                                     </option>
                                     <option value="EV">
-                                        EV charging parking
+                                        EV
                                     </option>
                                     <option value="ACCESSIBLE">
                                         Accessible parking
@@ -445,6 +655,21 @@
                                     <option value="B">Zone B</option>
                                     <option value="C">Zone C</option>
                                 </select>
+
+                                <div class="reservation-zone-key" aria-label="Zone color key">
+                                    <button type="button" class="zone-choice zone-a" data-zone-choice="A" aria-pressed="false">
+                                        <span class="zone-choice-dot" aria-hidden="true"></span>Zone A
+                                    </button>
+                                    <button type="button" class="zone-choice zone-b" data-zone-choice="B" aria-pressed="false">
+                                        <span class="zone-choice-dot" aria-hidden="true"></span>Zone B
+                                    </button>
+                                    <button type="button" class="zone-choice zone-c" data-zone-choice="C" aria-pressed="false">
+                                        <span class="zone-choice-dot" aria-hidden="true"></span>Zone C
+                                    </button>
+                                    <button type="button" class="zone-choice zone-any" data-zone-choice="" aria-pressed="true">
+                                        Any zone
+                                    </button>
+                                </div>
 
                                 <div class="form-text" id="zoneAvailabilityHint" role="status">
                                     Choose a zone with spaces matching your selected parking type.
@@ -532,6 +757,104 @@
         </section>
     </main>
 </div>
+
+    <dialog class="reservation-detail-dialog" id="reservationDetailDialog" aria-labelledby="reservationDetailTitle">
+        <div class="reservation-detail-header">
+            <div>
+                <p class="eyebrow">RESERVATION DETAILS</p>
+                <h2 id="reservationDetailTitle">Vehicle reservation</h2>
+            </div>
+            <button
+                class="reservation-detail-close"
+                id="reservationDetailClose"
+                type="button"
+                aria-label="Close reservation details"
+            >×</button>
+        </div>
+        <dl class="reservation-detail-grid">
+            <div><dt>Reservation ID</dt><dd id="detailReservationId">—</dd></div>
+            <div><dt>Vehicle registration</dt><dd id="detailVehicleNo">—</dd></div>
+            <div><dt>Vehicle type</dt><dd id="detailVehicleType">—</dd></div>
+            <div><dt>Parking space</dt><dd id="detailSlotId">—</dd></div>
+            <div><dt>Zone</dt><dd id="detailZone">—</dd></div>
+            <div><dt>Space type</dt><dd id="detailSlotType">—</dd></div>
+            <div><dt>Status</dt><dd id="detailStatus">—</dd></div>
+            <div><dt>Reservation created</dt><dd id="detailCreatedAt">—</dd></div>
+            <div><dt>Scheduled start</dt><dd id="detailStartTime">—</dd></div>
+            <div><dt>Scheduled end</dt><dd id="detailEndTime">—</dd></div>
+            <div><dt>Actual entry</dt><dd id="detailEntryTime">—</dd></div>
+            <div><dt>Actual exit</dt><dd id="detailExitTime">—</dd></div>
+        </dl>
+    </dialog>
+
+    <button
+        type="button"
+        class="copilot-launcher"
+    id="copilotLauncher"
+    aria-label="Open ParkWise AI Copilot"
+    aria-expanded="false"
+    aria-controls="copilotPanel"
+>
+    <span class="copilot-launcher-icon" aria-hidden="true">✦</span>
+    <span class="copilot-launcher-label">Ask ParkWise</span>
+</button>
+
+<section
+    class="copilot-panel"
+    id="copilotPanel"
+    role="dialog"
+    aria-labelledby="copilotTitle"
+    aria-modal="false"
+    hidden
+>
+    <header class="copilot-header">
+        <span class="copilot-header-icon" aria-hidden="true">✦</span>
+        <div class="copilot-heading">
+            <h2 id="copilotTitle">ParkWise Copilot</h2>
+            <p>Live parking help · No external AI configured</p>
+        </div>
+        <div class="copilot-header-actions">
+            <button type="button" id="copilotClear" aria-label="Clear conversation" title="Clear conversation">↻</button>
+            <button type="button" id="copilotClose" aria-label="Close ParkWise Copilot" title="Close">×</button>
+        </div>
+    </header>
+    <div class="copilot-messages" id="copilotMessages" role="log" aria-live="polite" aria-relevant="additions text">
+        <article class="copilot-message assistant-message">
+            <div class="copilot-bubble">
+                Hi, I’m ParkWise Copilot. I can check live space availability and zone occupancy, explain the trained occupancy forecasts, recommend spaces, or help prepare a reservation for your explicit confirmation. Answers use current ParkWise data; I’m a deterministic assistant, not a generative AI model.
+            </div>
+            <time class="copilot-time"></time>
+        </article>
+    </div>
+    <div class="copilot-suggestions" id="copilotSuggestions" aria-label="Suggested questions">
+        <button type="button" data-prompt="How many spaces are available right now?">Spaces available?</button>
+        <button type="button" data-prompt="What is the predicted occupancy in 30 minutes?">30-minute forecast</button>
+        <button type="button" data-prompt="Are any EV spaces available?">EV spaces</button>
+        <button type="button" data-prompt="Which zone has the most available spaces?">Least crowded zone</button>
+    </div>
+    <div class="copilot-typing" id="copilotTyping" role="status" hidden>
+        <span></span><span></span><span></span>
+        <span class="visually-hidden">Copilot is checking ParkWise data</span>
+    </div>
+    <form class="copilot-compose" id="copilotForm">
+        <label class="visually-hidden" for="copilotInput">Ask ParkWise Copilot</label>
+        <input
+            type="text"
+            id="copilotInput"
+            maxlength="500"
+            autocomplete="off"
+            placeholder="Ask about parking or reservations…"
+            aria-describedby="copilotComposerHint"
+            required
+        >
+        <button type="submit" id="copilotSend" aria-label="Send message">
+            <span aria-hidden="true">➤</span>
+        </button>
+    </form>
+    <p class="copilot-composer-hint" id="copilotComposerHint">
+        Enter to send · For reservations, Copilot checks availability and asks before booking.
+    </p>
+</section>
 
 <script src="script.js"></script>
 </body>
